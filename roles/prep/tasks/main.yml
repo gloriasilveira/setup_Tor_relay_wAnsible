@@ -1,0 +1,30 @@
+---
+- name: Install NTP
+  become: yes
+  yum:
+    name: ntp
+    state: latest
+
+- name: Update NTP config file with US servers
+  become: yes
+  template:
+    dest: /etc/ntp.conf
+    src: ntp.conf.j2
+    owner: root
+    group: root
+    mode: 0644
+    force: yes
+ 
+- name: Start NTPD service
+  become: yes
+  service:
+    name: ntpd
+    state: started
+
+- name: Set up a cron job to yum update all packages every night
+  become: yes
+  cron:
+    name: "Update all packages every night."
+    minute: "0"
+    hour: "2"
+    job: "/bin/yum -y update"   
