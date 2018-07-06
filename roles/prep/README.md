@@ -1,4 +1,4 @@
-Role Name
+Tor-Prep
 =========
 
 This role installs NTP and performs other preparatory tasks on the box that will later become a Tor node.
