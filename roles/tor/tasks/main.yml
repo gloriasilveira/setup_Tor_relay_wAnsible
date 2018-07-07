@@ -1,0 +1,66 @@
+---
+- name: Install and GPG-check EPEL repo
+  become: yes
+  yum_repository:
+    name: epel
+    description: EPEL YUM Repo
+    baseurl: https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+    mirrorlist: https://mirrors.fedoraproject.org/metalink?repo=epel-7&arch=$basearch
+    enabled: yes
+    gpgcheck: yes
+    gpgkey: https://archive.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-7
+
+- name: Install Tor
+  become: yes
+  yum:
+    name: tor
+    state: latest
+
+- name: Place Tor configuration file
+  become: yes
+  template:
+    dest: /etc/tor/torrc
+    src: torrc.j2
+
+- name: Enable Tor service
+  become: yes
+  command: systemctl enable tor
+
+- name: Start Tor service
+  become: yes
+  command: systemctl start tor 
+
+- name: Wait 2 min for Tor keys to be generated
+  pause:
+    minutes: 2
+
+- name: Archive keys folder for later backup
+  become: yes
+  archive:
+    path: /var/lib/tor/keys
+    dest: /var/lib/tor/keys/tor_keys.tgz
+
+- name: Copy keys folder archive to local Ansible control box
+  become: yes  
+  fetch:
+    src: /var/lib/tor/keys/tor_keys.tgz
+    dest: /tmp/backup_keys
+
+- name: Cleanup keys archive
+  become: yes
+  file:
+    path: /var/lib/tor/keys/tor_keys.tgz
+    state: absent
+
+- name: Get Fingerprint string for each relay
+  become: yes
+  command: "grep -oP '{{ relay_name }} \\K.*' /var/lib/tor/fingerprint"
+  register: command_output
+- debug: msg="{{ command_output.stdout }}" 
+
+- name: Set this string as Fingerprint var
+  set_fact:
+    relay_fingerprint: "{{ command_output.stdout }}"
+
+- debug:
+    var: relay_fingerprint
