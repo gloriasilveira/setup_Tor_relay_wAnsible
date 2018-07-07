@@ -1,0 +1,12 @@
+---
+- hosts: "tag_Purpose_{{ purpose }}"
+  vars:
+    purpose: TorRelay
+    ansible_python_interpreter: "/usr/bin/python"
+
+  become: yes
+
+  roles:
+    - role: prep
+    - role: tor
+      

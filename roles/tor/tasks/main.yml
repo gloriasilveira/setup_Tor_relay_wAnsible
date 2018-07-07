@@ -30,6 +30,10 @@
   become: yes
   command: systemctl start tor 
 
+###############################################################
+### Backup the Relay's keys and copy down to control box    ###
+###############################################################
+
 - name: Wait 2 min for Tor keys to be generated
   pause:
     minutes: 2
@@ -52,15 +56,95 @@
     path: /var/lib/tor/keys/tor_keys.tgz
     state: absent
 
+###################################################################
+### Capture the fingerprints of the resulting relays            ###
+### and dynamically update the MyFamily line in the torrc       ###
+### config file with this info                                  ###
+###################################################################
+
 - name: Get Fingerprint string for each relay
   become: yes
   command: "grep -oP '{{ relay_name }} \\K.*' /var/lib/tor/fingerprint"
-  register: command_output
-- debug: msg="{{ command_output.stdout }}" 
+  register: command_output 
 
 - name: Set this string as Fingerprint var
   set_fact:
     relay_fingerprint: "{{ command_output.stdout }}"
 
-- debug:
+- name: Output fingerprints for each relay
+  debug:
     var: relay_fingerprint
+
+- name: Create empty fingerprints file on control box
+  file:
+    path: /tmp/fingerprints
+    state: touch
+    mode: 0777
+  delegate_to: 127.0.0.1
+
+- name: Copy each fingerprint to this file
+  lineinfile:
+    line: "{{ relay_fingerprint }}"
+    insertafter: EOF
+    dest: /tmp/fingerprints
+  delegate_to: 127.0.0.1
+
+- name: Process this file to get all fingerprints as a string
+  become: yes
+  command: "awk 1 ORS=',' /tmp/fingerprints"
+  register: command_output
+  delegate_to: 127.0.0.1
+
+- name: Set this string of fingerprints as the relay_family_string var
+  set_fact:
+    relay_family_string: "{{ command_output.stdout }}"
+
+- name: Clean up relay fingerprints file on control box
+  become: yes
+  file: 
+    path: /tmp/fingerprints
+    state: absent
+  delegate_to: 127.0.0.1
+
+- name: Create empty relay family file on control box
+  file:
+    path: /tmp/relay_family
+    state: touch
+    mode: 0777
+  delegate_to: 127.0.0.1
+
+- name: Write relay family string to file
+  lineinfile:
+    line: "{{ relay_family_string }}"
+    dest: /tmp/relay_family
+  delegate_to: 127.0.0.1
+
+- name: Process this file to remove ending comma 
+  become: yes
+  command: "sed '$ s/.$//' /tmp/relay_family"
+  register: command_output2
+  delegate_to: 127.0.0.1
+
+- name: Save results as the var my_relay_family
+  set_fact:
+    my_relay_family: "{{ command_output2.stdout }}"
+
+- debug:
+    var: my_relay_family
+
+- name: Update the torrc with the correct MyFamily line
+  become: yes
+  replace:
+    path: /etc/tor/torrc
+    regexp: '^#MyFamily.*'
+    replace: "MyFamily {{ my_relay_family }}"
+    backup: yes
+    force: yes
+
+- name: Clean up the relay family string file on control box
+  become: yes
+  file:
+    path: /tmp/relay_family
+    state: absent
+  delegate_to: 127.0.0.1
+

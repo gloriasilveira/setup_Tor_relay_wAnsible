@@ -27,4 +27,5 @@
     name: "Update all packages every night."
     minute: "0"
     hour: "2"
-    job: "/bin/yum -y update"   
+    job: "/bin/yum -y update > /dev/null"
+    user: root   
