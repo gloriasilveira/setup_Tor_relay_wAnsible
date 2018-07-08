@@ -6,13 +6,13 @@ This will set up a non-exit relay by taking a standard EC2 instance you've spun 
 
 If you are setting up multiple EC2 instances, Ansible will know this and will also dynamically grab the fingerprints of each relay and insert this information into the torrc MyFamily configuration.
 
-To run:
+To run this playbook, here is a high-level idea of what to do, but for best results, please use the tutorial here: http://gloriasilveira.com/how-to-set-up-an-ec2-tor-relay-with-ansible.html 
 
 1-Launch your ec2 instance/instances on AWS and tag them with the tag "Purpose: TorRelay". 
 
 2-Execute the following command from your Ansible control box (NOT the relay instances themselves):
 
-(  )
+AWS_PROFILE=default ansible-playbook -i ec2.py ./setup_Tor_relay_wAnsible/setup_tor_node.yml --private-key=KEYHERE -u ec2-user -e "relay_name=NAMEHERE contact_email=EMAILHERE"
 
 Making sure to edit the extra-vars section (what starts with "e") to have your contact email and whatever you want to name your relay/relays in there.
 
