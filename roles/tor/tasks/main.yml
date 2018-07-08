@@ -141,6 +141,10 @@
     backup: yes
     force: yes
 
+- name: Restart Tor so new configs take effect
+  become: yes
+  command: systemctl restart tor
+
 - name: Clean up the relay family string file on control box
   become: yes
   file:
